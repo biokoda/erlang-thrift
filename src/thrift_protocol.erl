@@ -105,7 +105,7 @@ read(IProto0, {struct, Structure}, Tag)
                        {{Fid, Type}, Index} <-
                            lists:zip(Structure, IndexList)],
     % Fid -> {Type, Index}
-    SDict = dict:from_list(SWithIndices),
+    SDict = maps:from_list(SWithIndices),
 
     {IProto1, ok} = read(IProto0, struct_begin),
     RTuple0 = erlang:make_tuple(length(Structure) + Offset, undefined),
@@ -158,7 +158,7 @@ read(IProto0, {map, KeyType, ValType}) ->
                                      IProto1,
                                      lists:duplicate(Size, 0)),
     {IProto3, ok} = read(IProto2, map_end),
-    {IProto3, {ok, dict:from_list(List)}};
+    {IProto3, {ok, maps:from_list(List)}};
 
 read(IProto0, {set, Type}) ->
     {IProto1, #protocol_set_begin{etype = EType, size = Size}} =
@@ -193,8 +193,8 @@ read_struct_loop(IProto0, SDict, RTuple) ->
         {?tType_STOP, _} ->
             {IProto1, RTuple};
         _Else ->
-            case dict:find(Fid, SDict) of
-                {ok, {Type, Index}} ->
+            case maps:get(Fid, SDict) of
+                {Type, Index} ->
                     case term_to_typeid(Type) of
                         FType ->
                             {IProto2, {ok, Val}} = read(IProto1, Type),
@@ -355,9 +355,9 @@ write(Proto0, {{map, KeyType, ValType}, Data}) ->
                          #protocol_map_begin{
                            ktype = term_to_typeid(KeyType),
                            vtype = term_to_typeid(ValType),
-                           size  = dict:size(Data)
+                           size  = maps:size(Data)
                           }),
-    Proto2 = dict:fold(fun(KeyData, ValData, ProtoS0) ->
+    Proto2 = maps:fold(fun(KeyData, ValData, ProtoS0) ->
                                {ProtoS1, ok} = write(ProtoS0, {KeyType, KeyData}),
                                {ProtoS2, ok} = write(ProtoS1, {ValType, ValData}),
                                ProtoS2
