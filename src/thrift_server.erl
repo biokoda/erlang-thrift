@@ -66,12 +66,35 @@ take_socket(Server, Socket) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init({Port, Service, Handler}) ->
-    {ok, Socket} = gen_tcp:listen(Port,
-                                  [binary,
-                                   {packet, 0},
-                                   {active, false},
-                                   {nodelay, true},
-                                   {reuseaddr, true}]),
+    case application:get_env(thrift, network_interface) of
+      {ok, Value} ->
+        IPAddress = inet:parse_address(Value);
+        _ ->
+          case string:tokens(atom_to_list(node()), "@") of
+            ["nonode","nohost"] ->
+              IPAddress = {127,0,0,1};
+            [_Name,Value] ->
+              {ok, IPAddress} = inet:parse_address(Value)
+          end
+    end,
+    {ok, Addresses} = inet:getif(),
+    case lists:keyfind(IPAddress, 1, Addresses) of
+      false ->
+        {ok, Socket} = gen_tcp:listen(Port,
+                                      [binary,
+                                       {packet, 0},
+                                       {active, false},
+                                       {nodelay, true},
+                                       {reuseaddr, true}]);
+      _ ->
+        {ok, Socket} = gen_tcp:listen(Port,
+                                      [binary,
+                                       {ifaddr, IPAddress},
+                                       {packet, 0},
+                                       {active, false},
+                                       {nodelay, true},
+                                       {reuseaddr, true}])
+    end,
     {ok, Ref} = prim_inet:async_accept(Socket, -1),
     {ok, #state{listen_socket = Socket,
                 acceptor_ref = Ref,
