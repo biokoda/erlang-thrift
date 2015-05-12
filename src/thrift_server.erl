@@ -68,13 +68,21 @@ take_socket(Server, Socket) ->
 init({Port, Service, Handler}) ->
     case application:get_env(thrift, network_interface) of
       {ok, Value} ->
-        IPAddress = inet:parse_address(Value);
+          case inet:parse_address(Value) of
+            {ok, IPAddress} -> ok;
+            _ ->
+              {ok, {hostent, _, [], inet, _, [IPAddress]}} = inet:gethostbyname(Value)
+          end;
         _ ->
           case string:tokens(atom_to_list(node()), "@") of
-            ["nonode","nohost"] ->
-              IPAddress = {127,0,0,1};
-            [_Name,Value] ->
-              {ok, IPAddress} = inet:parse_address(Value)
+            ["nonode","nohost"] -> IPAddress = {127,0,0,1};
+            [_Name, Value] ->
+              case inet:parse_address(Value) of
+                {ok, IPAddress} -> ok;
+                _ ->
+                  {ok, Hostname} = inet:gethostname(),
+                  {ok, {hostent, _, [], inet, _, [IPAddress]}} = inet:gethostbyname(Hostname)
+              end
           end
     end,
     {ok, Addresses} = inet:getif(),
