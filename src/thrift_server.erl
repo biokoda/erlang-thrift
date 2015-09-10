@@ -74,16 +74,17 @@ init({Port, Service, Handler}) ->
               {ok, {hostent, _, [], inet, _, [IPAddress]}} = inet:gethostbyname(Value)
           end;
         _ ->
-          case string:tokens(atom_to_list(node()), "@") of
-            ["nonode","nohost"] -> IPAddress = {127,0,0,1};
-            [_Name, Value] ->
-              case inet:parse_address(Value) of
-                {ok, IPAddress} -> ok;
-                _ ->
-                  {ok, Hostname} = inet:gethostname(),
-                  {ok, {hostent, _, [], inet, _, [IPAddress]}} = inet:gethostbyname(Hostname)
-              end
-          end
+          % case string:tokens(atom_to_list(node()), "@") of
+          %   ["nonode","nohost"] -> IPAddress = {127,0,0,1};
+          %   [_Name, Value] ->
+          %     case inet:parse_address(Value) of
+          %       {ok, IPAddress} -> ok;
+          %       _ ->
+          %         {ok, Hostname} = inet:gethostname(),
+          %         {ok, {hostent, _, [], inet, _, [IPAddress]}} = inet:gethostbyname(Hostname)
+          %     end
+          % end
+          IPAddress = false
     end,
     {ok, Addresses} = inet:getif(),
     case lists:keyfind(IPAddress, 1, Addresses) of
