@@ -36,6 +36,7 @@ new(Socket) ->
     new(Socket, []).
 
 new(Socket, Opts) when is_list(Opts) ->
+    ok = inet:setopts(Socket,[{nodelay,true}]),
     State =
         case lists:keysearch(recv_timeout, 1, Opts) of
             {value, {recv_timeout, Timeout}}
