@@ -66,6 +66,16 @@ take_socket(Server, Socket) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init({Port, Service, Handler}) ->
+    case application:get_env(thrift, network_interface) of
+      {ok, Value} ->
+          case inet:parse_address(Value) of
+            {ok, IPAddress} -> ok;
+            _ ->
+              {ok, {hostent, _, [], inet, _, [IPAddress]}} = inet:gethostbyname(Value)
+          end;
+        _ ->
+          IPAddress = false
+    end,
     {ok, Socket} = gen_tcp:listen(Port,
                                   [binary,
                                    {ifaddr, IPAddress},
