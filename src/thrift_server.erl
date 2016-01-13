@@ -68,7 +68,6 @@ take_socket(Server, Socket) ->
 init({Port, Service, Handler}) ->
     {ok, Socket} = gen_tcp:listen(Port,
                                   [binary,
-                                   {ifaddr, IPAddress},
                                    {packet, 0},
                                    {active, false},
                                    {nodelay, true},
