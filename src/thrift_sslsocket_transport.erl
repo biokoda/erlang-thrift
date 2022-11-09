@@ -58,7 +58,7 @@ new(Socket, SockOpts, SslOptions) when is_list(SockOpts), is_list(SslOptions) ->
     inet:setopts(Socket, [{active, false}]), %% => prevent the ssl handshake messages get lost
 
     %% upgrade to an ssl socket
-    case catch ssl:ssl_accept(Socket, SslOptions) of % infinite timeout
+    case catch ssl:handshake(Socket, SslOptions) of % infinite timeout
         {ok, SslSocket} ->
             new(SslSocket, SockOpts);
         {error, Reason} ->

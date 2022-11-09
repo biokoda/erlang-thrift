@@ -89,17 +89,16 @@ handle_function(State0=#thrift_processor{protocol = Proto0,
         %%                       [Function, Params, Micro/1000.0]),
         handle_success(State1, Function, Result, Seqid)
     catch
-        Type:Data when Type =:= throw orelse Type =:= error ->
-            handle_function_catch(State1, Function, Type, Data, Seqid)
+        Type:Data:Stack when Type =:= throw orelse Type =:= error ->
+            handle_function_catch(State1, Function, Type, Data, Stack, Seqid)
     end.
 
 handle_function_catch(State = #thrift_processor{service = Service},
-                      Function, ErrType, ErrData, Seqid) ->
+                      Function, ErrType, ErrData, Stack, Seqid) ->
     IsOneway = Service:function_info(Function, reply_type) =:= oneway_void,
 
     case {ErrType, ErrData} of
         _ when IsOneway ->
-            Stack = erlang:get_stacktrace(),
             error_logger:warning_msg(
               "oneway void ~p threw error which must be ignored: ~p",
               [Function, {ErrType, ErrData, Stack}]),
@@ -107,11 +106,11 @@ handle_function_catch(State = #thrift_processor{service = Service},
 
         {throw, Exception} when is_tuple(Exception), size(Exception) > 0 ->
             %error_logger:warning_msg("~p threw exception: ~p~n", [Function, Exception]),
-            handle_exception(State, Function, Exception, Seqid);
+            handle_exception(State, Function, Exception, Stack, Seqid);
             % we still want to accept more requests from this client
 
         {error, Error} ->
-            handle_error(State, Function, Error, Seqid)
+            handle_error(State, Function, Error, Stack, Seqid)
     end.
 
 handle_success(State = #thrift_processor{service = Service},
@@ -137,6 +136,7 @@ handle_success(State = #thrift_processor{service = Service},
 handle_exception(State = #thrift_processor{service = Service},
                  Function,
                  Exception,
+		 Stack,
                  Seqid) ->
     ExceptionType = element(1, Exception),
     %% Fetch a structure like {struct, [{-2, {struct, {Module, Type}}},
@@ -160,7 +160,7 @@ handle_exception(State = #thrift_processor{service = Service},
                                                 % Make sure we got at least one defined
     case lists:all(fun(X) -> X =:= undefined end, ExceptionList) of
         true ->
-            handle_unknown_exception(State, Function, Exception, Seqid);
+            handle_unknown_exception(State, Function, Exception, Stack, Seqid);
         false ->
             send_reply(State, Function, ?tMessageType_REPLY, {ReplySpec, ExceptionTuple}, Seqid)
     end.
@@ -169,12 +169,11 @@ handle_exception(State = #thrift_processor{service = Service},
 %% Called when an exception has been explicitly thrown by the service, but it was
 %% not one of the exceptions that was defined for the function.
 %%
-handle_unknown_exception(State, Function, Exception, Seqid) ->
+handle_unknown_exception(State, Function, Exception, Stack, Seqid) ->
     handle_error(State, Function, {exception_not_declared_as_thrown,
-                                   Exception}, Seqid).
+                                   Exception}, Stack, Seqid).
 
-handle_error(State, Function, Error, Seqid) ->
-    Stack = erlang:get_stacktrace(),
+handle_error(State, Function, Error, Stack, Seqid) ->
     error_logger:error_msg("~p had an error: ~p~n", [Function, {Error, Stack}]),
 
     Message =
